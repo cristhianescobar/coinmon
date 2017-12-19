@@ -7,7 +7,7 @@ const Table = require('cli-table2')
 const colors = require('colors')
 const humanize = require('humanize-plus')
 const os = require('os')
-const portfolio = require('../portfolio.json');
+const portfolio = require('/Users/cristhianescobar/Desktop/portfolio.json');
 
 const platform = os.platform() // linux, darwin, win32, sunos
 const supportEmoji = platform !== 'darwin'
@@ -52,6 +52,7 @@ const table = new Table({
 })
 const spinner = ora('Loading data').start()
 const sourceUrl = `https://api.coinmarketcap.com/v1/ticker/?limit=${top}&convert=${convert}`
+var total = 0
 axios.get(sourceUrl)
 .then(function (response) {
   spinner.stop()
@@ -70,7 +71,8 @@ axios.get(sourceUrl)
       const percentChange1h = record.percent_change_1h
       const textChange1h = `${percentChange1h}%`
       const change1h = percentChange1h ? (percentChange1h > 0 ? textChange1h.green : textChange1h.red) : 'NA'
-      const portfolioValue = record[`price_${convert}`.toLowerCase()]  
+      const portfolioValue = new Number(portfolio[record.symbol] * record.price_usd) 
+      total += portfolioValue
       return [
         record.rank,
         `${supportEmoji ? '💰  ' : ''}${record.symbol}`,
@@ -78,7 +80,7 @@ axios.get(sourceUrl)
         change1h,
         `$${record[`price_${convert}`.toLowerCase()]}`,
         numberWithCommas(portfolio[record.symbol]),
-        `$${portfolio[record.symbol] * record.price_usd}`
+        `$${portfolioValue.toFixed(2)}`
       ]
     })
     .forEach(record => table.push(record))
@@ -87,6 +89,7 @@ axios.get(sourceUrl)
   } else {
     console.log(`Data source from coinmarketcap.com at ${new Date().toLocaleTimeString()}`)
     console.log(table.toString())
+    console.log(`total portfolio value: $${Number(total).toFixed(2)}`)
   }
 })
 .catch(function (error) {
