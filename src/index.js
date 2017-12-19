@@ -7,6 +7,7 @@ const Table = require('cli-table2')
 const colors = require('colors')
 const humanize = require('humanize-plus')
 const os = require('os')
+const portfolio = require('../portfolio.json');
 
 const platform = os.platform() // linux, darwin, win32, sunos
 const supportEmoji = platform !== 'darwin'
@@ -25,7 +26,7 @@ const availableCurrencies = ['USD', 'AUD', 'BRL', 'CAD', 'CHF', 'CLP', 'CNY', 'C
 if (availableCurrencies.indexOf(convert) === -1) {
   return console.log('We cannot convert to your fiat currency.'.red)
 }
-const find = program.find
+const find = Object.keys(portfolio)
 const top = !isNaN(program.top) && +program.top > 0 ? +program.top : (find.length > 0 ? 1500 : 10)
 const humanizeIsEnabled = program.humanize !== 'false'
 const table = new Table({
@@ -46,19 +47,8 @@ const table = new Table({
     'right-mid': '-',
     'middle': '│'
   },
-  head: ['Rank', 'Coin', `Price (${convert})`, 'Change (24H)', 'Change (1H)', `Market Cap (${convert})`].map(title => title.yellow),
-  colWidths: [6, 14, 15, 15, 15, 20]
-})
-
-cfonts.say('coinmon', {
-  font: 'simple3d',
-  align: 'left',
-  colors: ['yellow'],
-  background: 'Black',
-  letterSpacing: 2,
-  lineHeight: 1,
-  space: true,
-  maxLength: '0'
+  head: ['Rank', 'Coin', 'Change (24H)', 'Change (1H)', `Price (${convert})`, 'Quantity', `Portfolio (${convert})`].map(title => title.yellow),
+  colWidths: [6, 14, 15, 15, 15]
 })
 const spinner = ora('Loading data').start()
 const sourceUrl = `https://api.coinmarketcap.com/v1/ticker/?limit=${top}&convert=${convert}`
@@ -73,21 +63,22 @@ axios.get(sourceUrl)
       return true
     })
     .map(record => {
+      console.log(record.symbol);
       const percentChange24h = record.percent_change_24h
       const textChange24h = `${percentChange24h}%`
       const change24h = percentChange24h? (percentChange24h > 0 ? textChange24h.green : textChange24h.red) : 'NA'
       const percentChange1h = record.percent_change_1h
       const textChange1h = `${percentChange1h}%`
       const change1h = percentChange1h ? (percentChange1h > 0 ? textChange1h.green : textChange1h.red) : 'NA'
-      const marketCap = record[`market_cap_${convert}`.toLowerCase()]
-      const displayedMarketCap = humanizeIsEnabled ? humanize.compactInteger(marketCap, 3) : marketCap
+      const portfolioValue = record[`price_${convert}`.toLowerCase()]  
       return [
         record.rank,
         `${supportEmoji ? '💰  ' : ''}${record.symbol}`,
-        record[`price_${convert}`.toLowerCase()],
         change24h,
         change1h,
-        displayedMarketCap
+        `$${record[`price_${convert}`.toLowerCase()]}`,
+        numberWithCommas(portfolio[record.symbol]),
+        `$${portfolio[record.symbol] * record.price_usd}`
       ]
     })
     .forEach(record => table.push(record))
@@ -102,3 +93,7 @@ axios.get(sourceUrl)
   spinner.stop()
   console.error('Coinmon is not working now. Please try again later.'.red)
 })
+
+const numberWithCommas = (x) => {
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
